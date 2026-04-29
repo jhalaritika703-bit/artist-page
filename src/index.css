@@ -15,10 +15,11 @@ body {
   color: var(--white);
   font-family: 'Cormorant Garamond', serif;
   margin: 0;
-  overflow: hidden;
+  overflow-x: hidden; 
+  overflow-y: auto; 
+  outline: none;
   overscroll-behavior: none;
 }
-
 /* Cinematic Overlays */
 .vignette {
   position: fixed;

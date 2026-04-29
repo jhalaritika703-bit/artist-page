@@ -89,82 +89,119 @@ const Canvas = () => {
 
   const clearTemp = useCallback(() => setTempFilters(DEFAULT_FILTERS), []);
 
-  useEffect(() => {
-    if (!rowData.totalCount) return;
+useEffect(() => {
+  if (!rowData.totalCount) return;
 
-    const grid = gridRef.current;
-    if (!grid) return;
+  const grid = gridRef.current;
+  if (!grid) return;
 
-    if (!proxy.current) proxy.current = document.createElement('div');
+  if (!proxy.current) proxy.current = document.createElement('div');
 
-    let loopX = grid.offsetWidth / 3;
-    let loopY = grid.offsetHeight / 3;
+  let loopX = grid.offsetWidth / 3;
+  let loopY = grid.offsetHeight / 3;
 
-    const setGridX = gsap.quickSetter(grid, 'x', 'px');
-    const setGridY = gsap.quickSetter(grid, 'y', 'px');
+  const setGridX = gsap.quickSetter(grid, 'x', 'px');
+  const setGridY = gsap.quickSetter(grid, 'y', 'px');
 
-    gsap.set(grid, { force3D: true });
+  gsap.set(grid, { force3D: true });
 
-    const updateCardOpacity = () => {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const pad = 90;
+  // --- NEW SCROLL LOGIC START ---
+  const handleScrollInput = (e) => {
+    // Sidebar open ho toh scroll block rahega
+    if (isSidebarOpen) return; 
 
-      cardRefs.current.forEach((card) => {
-        if (!card?.getBounds) return;
-        const b = card.getBounds();
-        if (!b) return;
+    let dx = 0;
+    let dy = 0;
 
-        const cX = b.left + b.width / 2;
-        const cY = b.top + b.height / 2;
-
-        const op =
-          gsap.utils.mapRange(0, pad, 0, 1, gsap.utils.clamp(0, pad, cX)) *
-          gsap.utils.mapRange(vw - pad, vw, 1, 0, gsap.utils.clamp(vw - pad, vw, cX)) *
-          gsap.utils.mapRange(0, pad, 0, 1, gsap.utils.clamp(0, pad, cY)) *
-          gsap.utils.mapRange(vh - pad, vh, 1, 0, gsap.utils.clamp(vh - pad, vh, cY));
-
-        card.setOpacity(op);
-      });
-    };
-
-    const tick = () => {
-      const rawX = gsap.getProperty(proxy.current, 'x');
-      const rawY = gsap.getProperty(proxy.current, 'y');
-
-      smoothPos.current.x += (rawX - smoothPos.current.x) * LERP_FACTOR;
-      smoothPos.current.y += (rawY - smoothPos.current.y) * LERP_FACTOR;
-
-      const wrappedX = gsap.utils.wrap(-loopX, 0, smoothPos.current.x);
-      const wrappedY = gsap.utils.wrap(-loopY, 0, smoothPos.current.y);
-
-      setGridX(wrappedX);
-      setGridY(wrappedY);
-      updateCardOpacity();
-    };
-
-    if (!tickerAdded.current) {
-      gsap.ticker.add(tick);
-      tickerAdded.current = true;
+    if (e.type === 'wheel') {
+      dx = e.deltaX;
+      dy = e.deltaY;
+    } else if (e.type === 'keydown') {
+      const speed = 100; // Speed thodi badha di hai
+      if (e.key === 'ArrowRight') dx = speed;
+      if (e.key === 'ArrowLeft') dx = -speed;
+      if (e.key === 'ArrowDown') dy = speed;
+      if (e.key === 'ArrowUp') dy = -speed;
     }
 
-    const dragInstance = Draggable.create(proxy.current, {
-      type: 'x,y',
-      trigger: containerRef.current,
-      inertia: true,
-      throwResistance: 1200,
-      onDragStart: () => setIsDragging(true),
-      onDragEnd: () => setIsDragging(false),
-      allowNativeTouchScrolling: true,
-      dragClickables: false,
-    });
+    if (proxy.current && (dx !== 0 || dy !== 0)) {
+      const currentX = gsap.getProperty(proxy.current, 'x');
+      const currentY = gsap.getProperty(proxy.current, 'y');
+      
+      gsap.set(proxy.current, {
+        x: currentX - dx,
+        y: currentY - dy
+      });
+    }
+  };
 
-    return () => {
-      if (dragInstance[0]) dragInstance[0].kill();
-      gsap.ticker.remove(tick);
-      tickerAdded.current = false;
-    };
-  }, [rowData]);
+  window.addEventListener('wheel', handleScrollInput, { passive: true });
+  window.addEventListener('keydown', handleScrollInput);
+  // --- NEW SCROLL LOGIC END ---
+
+  const updateCardOpacity = () => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 90;
+
+    cardRefs.current.forEach((card) => {
+      if (!card?.getBounds) return;
+      const b = card.getBounds();
+      if (!b) return;
+
+      const cX = b.left + b.width / 2;
+      const cY = b.top + b.height / 2;
+
+      const op =
+        gsap.utils.mapRange(0, pad, 0, 1, gsap.utils.clamp(0, pad, cX)) *
+        gsap.utils.mapRange(vw - pad, vw, 1, 0, gsap.utils.clamp(vw - pad, vw, cX)) *
+        gsap.utils.mapRange(0, pad, 0, 1, gsap.utils.clamp(0, pad, cY)) *
+        gsap.utils.mapRange(vh - pad, vh, 1, 0, gsap.utils.clamp(vh - pad, vh, cY));
+
+      card.setOpacity(op);
+    });
+  };
+
+  const tick = () => {
+    const rawX = gsap.getProperty(proxy.current, 'x');
+    const rawY = gsap.getProperty(proxy.current, 'y');
+
+    smoothPos.current.x += (rawX - smoothPos.current.x) * LERP_FACTOR;
+    smoothPos.current.y += (rawY - smoothPos.current.y) * LERP_FACTOR;
+
+    const wrappedX = gsap.utils.wrap(-loopX, 0, smoothPos.current.x);
+    const wrappedY = gsap.utils.wrap(-loopY, 0, smoothPos.current.y);
+
+    setGridX(wrappedX);
+    setGridY(wrappedY);
+    updateCardOpacity();
+  };
+
+  if (!tickerAdded.current) {
+    gsap.ticker.add(tick);
+    tickerAdded.current = true;
+  }
+
+  const dragInstance = Draggable.create(proxy.current, {
+    type: 'x,y',
+    trigger: containerRef.current,
+    inertia: true,
+    throwResistance: 1200,
+    onDragStart: () => setIsDragging(true),
+    onDragEnd: () => setIsDragging(false),
+    allowNativeTouchScrolling: true,
+    dragClickables: false,
+  });
+
+  return () => {
+    if (dragInstance[0]) dragInstance[0].kill();
+    gsap.ticker.remove(tick);
+    tickerAdded.current = false;
+    // Cleanup listeners
+    window.removeEventListener('wheel', handleScrollInput);
+    window.removeEventListener('keydown', handleScrollInput);
+  };
+}, [rowData, isSidebarOpen]); 
 
   return (
     <main
